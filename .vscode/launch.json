@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug backend (tsx)", "type": "node", "request": "launch",
+      "cwd": "${workspaceFolder}/backend", "program": "${workspaceFolder}/backend/src/app.ts",
+      "runtimeArgs": ["--import", "tsx"], "envFile": "${workspaceFolder}/backend/.env",
+      "console": "integratedTerminal", "skipFiles": ["<node_internals>/**"]
+    },
+    { "name": "Open frontend in Chrome", "type": "chrome", "request": "launch", "url": "http://localhost:3000", "webRoot": "${workspaceFolder}/frontend" }
+  ]
+}

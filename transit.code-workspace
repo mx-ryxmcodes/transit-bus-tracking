@@ -1,0 +1,38 @@
+{
+  "folders": [
+    {
+      "name": "root",
+      "path": "."
+    },
+    {
+      "name": "backend",
+      "path": "backend"
+    },
+    {
+      "name": "frontend",
+      "path": "frontend"
+    },
+    {
+      "name": "shared",
+      "path": "shared"
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.next": true,
+      "**/dist": true
+    },
+    "typescript.tsdk": "node_modules/typescript/lib",
+    "editor.formatOnSave": true,
+    "tailwindCSS.experimental.classRegex": [
+      [
+        "className=\"([^\"]*)\""
+      ]
+    ],
+    "[prisma]": {
+      "editor.defaultFormatter": "Prisma.prisma"
+    },
+    "prisma.pinToPrisma6": true
+  }
+}

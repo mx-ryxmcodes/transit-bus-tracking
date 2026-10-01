@@ -1,0 +1,13 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "install all", "type": "shell", "command": "npm run install:all", "problemMatcher": [] },
+    { "label": "db: start postgres", "type": "shell", "command": "docker compose up -d", "problemMatcher": [] },
+    { "label": "db: migrate", "type": "shell", "command": "npx prisma migrate dev --name transit", "options": { "cwd": "${workspaceFolder}/backend" }, "problemMatcher": [] },
+    { "label": "db: seed operator", "type": "shell", "command": "npm run seed", "options": { "cwd": "${workspaceFolder}/backend" }, "problemMatcher": [] },
+    { "label": "db: seed demo data", "type": "shell", "command": "npm run seed:demo", "options": { "cwd": "${workspaceFolder}/backend" }, "problemMatcher": [] },
+    { "label": "backend: dev", "type": "shell", "command": "npm run dev", "options": { "cwd": "${workspaceFolder}/backend" }, "isBackground": true, "problemMatcher": [], "presentation": { "group": "dev" } },
+    { "label": "frontend: dev", "type": "shell", "command": "npm run dev", "options": { "cwd": "${workspaceFolder}/frontend" }, "isBackground": true, "problemMatcher": [], "presentation": { "group": "dev" } },
+    { "label": "dev: run everything", "dependsOn": ["backend: dev", "frontend: dev"], "dependsOrder": "parallel", "group": { "kind": "build", "isDefault": true }, "problemMatcher": [] }
+  ]
+}

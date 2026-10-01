@@ -1,0 +1,198 @@
+// Full schema (Phase 1 identity + transit domain). Replaces the Phase 1 file.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ROLE_PASSENGER
+  ROLE_DRIVER
+  ROLE_OPERATOR
+}
+
+enum BusStatus {
+  AVAILABLE
+  ON_ROUTE
+  DELAYED
+  BREAK
+  OFFLINE
+  LOCATION_UNAVAILABLE
+}
+
+enum DriverStatus {
+  ACTIVE
+  OFF_DUTY
+}
+
+enum TripStatus {
+  SCHEDULED
+  IN_PROGRESS
+  DELAYED
+  COMPLETED
+  CANCELLED
+}
+
+// ───────────── Identity (Phase 1) ─────────────
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  fullName     String
+  role         Role     @default(ROLE_PASSENGER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  driverProfile DriverProfile?
+  refreshTokens RefreshToken[]
+
+  @@index([role])
+}
+
+model DriverProfile {
+  id            String       @id @default(uuid())
+  userId        String       @unique
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  licenseNumber String       @unique
+  phone         String?
+  status        DriverStatus @default(OFF_DUTY)
+  assignedBusId String?
+  assignedBus   Bus?         @relation("DriverAssignedBus", fields: [assignedBusId], references: [id], onDelete: SetNull)
+  currentTripId String?
+  devices       DriverDevice[]
+  trips         Trip[]
+  drivingBuses  Bus[]        @relation("BusCurrentDriver")
+}
+
+model DriverDevice {
+  id          String        @id @default(uuid())
+  driverId    String
+  driver      DriverProfile @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  fingerprint String
+  label       String?
+  isTrusted   Boolean       @default(false)
+  lastSeenAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@unique([driverId, fingerprint])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ───────────── Transit domain ─────────────
+model Bus {
+  id              String    @id @default(uuid())
+  busNumber       String    @unique
+  vehicleNumber   String    @unique
+  capacity        Int
+  status          BusStatus @default(AVAILABLE)
+  currentDriverId String?
+  currentDriver   DriverProfile? @relation("BusCurrentDriver", fields: [currentDriverId], references: [id], onDelete: SetNull)
+  currentRouteId  String?
+  currentRoute    Route?    @relation("BusRoute", fields: [currentRouteId], references: [id], onDelete: SetNull)
+  lastLat         Float?
+  lastLng         Float?
+  createdAt       DateTime  @default(now())
+
+  assignedDrivers DriverProfile[] @relation("DriverAssignedBus")
+  trips           Trip[]
+  schedules       Schedule[]
+}
+
+model Route {
+  id                    String   @id @default(uuid())
+  routeName             String   @unique
+  startLocation         String
+  destination           String
+  totalStops            Int      @default(0)
+  estimatedDurationMins Int
+  activeStatus          Boolean  @default(true)
+
+  stops     Stop[]
+  buses     Bus[]          @relation("BusRoute")
+  trips     Trip[]
+  alerts    ServiceAlert[]
+  schedules Schedule[]
+}
+
+model Stop {
+  id        String @id @default(uuid())
+  routeId   String
+  route     Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stopName  String
+  latitude  Float
+  longitude Float
+  stopOrder Int
+
+  alerts ServiceAlert[]
+
+  @@unique([routeId, stopOrder])
+  @@index([stopName])
+}
+
+model Trip {
+  id            String        @id @default(uuid())
+  busId         String
+  bus           Bus           @relation(fields: [busId], references: [id])
+  driverId      String
+  driver        DriverProfile @relation(fields: [driverId], references: [id])
+  routeId       String
+  route         Route         @relation(fields: [routeId], references: [id])
+  startTime     DateTime      @default(now())
+  endTime       DateTime?
+  currentLat    Float?
+  currentLng    Float?
+  tripStatus    TripStatus    @default(IN_PROGRESS)
+  delayMinutes  Int           @default(0)
+  isSimulated   Boolean       @default(false)
+  lastPingAt    DateTime?
+  // metrics persisted when the trip ends
+  distanceKm    Float         @default(0)
+  durationMins  Int?
+  etaErrorMins  Float?
+
+  @@index([tripStatus])
+  @@index([startTime])
+}
+
+model ServiceAlert {
+  id             String    @id @default(uuid())
+  routeId        String
+  route          Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  impactedStopId String?
+  impactedStop   Stop?     @relation(fields: [impactedStopId], references: [id], onDelete: SetNull)
+  delayMinutes   Int       @default(0)
+  isActive       Boolean   @default(true)
+  source         String    @default("OPERATOR")
+  createdAt      DateTime  @default(now())
+  resolvedAt     DateTime?
+
+  @@index([routeId, isActive])
+}
+
+model Schedule {
+  id            String  @id @default(uuid())
+  routeId       String
+  route         Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  busId         String?
+  bus           Bus?    @relation(fields: [busId], references: [id], onDelete: SetNull)
+  departureTime String  // "HH:mm"
+  daysOfWeek    Int[]   // 0 = Sunday … 6 = Saturday
+  isActive      Boolean @default(true)
+}
